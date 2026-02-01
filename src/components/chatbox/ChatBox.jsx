@@ -1,58 +1,130 @@
 import './ChatBox.css';
 import assets from '../../../assets/assets';
-import React from 'react';                              
+import React, { useContext, useEffect, useState } from 'react';
+import { AppContext } from '../../context/AppContext';
+import { db, leaveRoom } from '../../config/firebase';
+import { arrayUnion, doc, onSnapshot, serverTimestamp, updateDoc, collection, addDoc, query, orderBy, getDoc } from 'firebase/firestore';
+import { toast } from 'react-toastify';
+
 const ChatBox = () => {
-  return (
+  const { userData, messagesId, chatUser, messages, setMessages, setMessagesId, setChatUser } = useContext(AppContext);
+  const [input, setInput] = useState("");
+  const [participants, setParticipants] = useState([]);
+
+  const fetchParticipants = async () => {
+    if (chatUser && chatUser.participants) {
+      const names = [];
+      for (const uid of chatUser.participants) {
+        const userRef = doc(db, 'users', uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          names.push(userSnap.data().name);
+        }
+      }
+      setParticipants(names);
+    }
+  }
+
+  useEffect(() => {
+    fetchParticipants();
+  }, [chatUser]);
+
+  const handleLeaveRoom = async () => {
+    if (window.confirm("Are you sure you want to leave this room?")) {
+      const success = await leaveRoom(messagesId, userData);
+      if (success) {
+        setMessagesId(null);
+        setChatUser(null);
+        localStorage.removeItem('activeRoomId');
+        localStorage.removeItem('activeChatUser');
+        toast.success("Left room");
+      }
+    }
+  }
+
+  const sendMessage = async () => {
+    try {
+      if (input && messagesId) {
+        const messageData = {
+          text: input,
+          sId: userData.uid,
+          createdAt: serverTimestamp()
+        }
+
+        await addDoc(collection(db, "rooms", messagesId, "messages"), messageData);
+
+        // Update last message in room document
+        const roomRef = doc(db, 'rooms', messagesId);
+        await updateDoc(roomRef, {
+          lastMessage: input,
+          updatedAt: Date.now()
+        });
+
+        setInput("");
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast.error("Failed to send message");
+    }
+  }
+
+  useEffect(() => {
+    if (messagesId) {
+      const q = query(
+        collection(db, "rooms", messagesId, "messages"),
+        orderBy("createdAt", "asc")
+      );
+
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        setMessages(snapshot.docs.map(doc => doc.data()));
+      });
+
+      return () => unsubscribe();
+    }
+  }, [messagesId]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      sendMessage();
+    }
+  }
+
+  return chatUser ? (
     <div className="chat-box">
       <div className="chat-user">
         <img src={assets.profile_img} alt="" />
-        <p>Richard Sanford <img  className='dot' src={assets.green_dot} alt="" /></p>
-        <img src={assets.help_icon} className='help' alt="" />
-      </div>
-
-    <div className="chat-msg">
-      <div className="s-msg">
-        <p className="msg">Lorem ipsum dolor, sit amet consectetur adipisicing elit. Laudantium odit, excepturi molestiae voluptate veritatis, ipsum nobis quas expedita saepe maiores natus voluptatum dolore. Dignissimos aliquid nisi tempore laudantium accusantium ipsa.</p>
-        <div>
-          <img src={assets.profile_img} alt="" />
-          <p>2:30</p>
+        <div className="chat-info">
+          <p>{chatUser.name || chatUser.roomId} <img className='dot' src={assets.green_dot} alt="" /></p>
+          <span className="participants">{participants.join(", ")}</span>
         </div>
+        <img onClick={handleLeaveRoom} src={assets.help_icon} className='help' title="Leave Room" alt="Leave Room" />
       </div>
-         <div className="s-msg">
-          <img className="msg-img" src={assets.pic1} alt="" />
 
-        <div>
-          <img src={assets.profile_img} alt="" />
-          <p>2:30</p>
-        </div>
-
+      <div className="chat-msg">
+        {messages.map((msg, index) => (
+          <div key={index} className={msg.sId === userData.uid ? "s-msg" : "r-msg"}>
+            <p className="msg">{msg.text}</p>
+            <div>
+              <img src={assets.profile_img} alt="" />
+              <p>{msg.createdAt ? new Date(msg.createdAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}</p>
+            </div>
+          </div>
+        ))}
       </div>
-            <div className="r-msg">
-        <p className="msg">Lorem ipsum dolor sit amet consectetur adipisicing elit. Neque quod deserunt ab numquam. Tenetur necessitatibus magni iure optio natus, ipsa quasi voluptates quia facilis non maiores ut ad cupiditate voluptas!</p>
-        <div>
-          <img src={assets.profile_img} alt="" />
-          <p>2:30</p>
-        </div>
-      </div>
-    </div>
 
-
-
-
-
-
-
-
-
-
-      <div className="chat-input">
-        <input type="text"  placeholder='Send a Message'/>
-        <input type="file" name="" id="image"  accept='image/png , image/jpeg' hidden/>
+      <div className="chat-input" onKeyDown={handleKeyDown}>
+        <input onChange={(e) => setInput(e.target.value)} value={input} type="text" placeholder='Send a Message' />
+        <input type="file" name="" id="image" accept='image/png , image/jpeg' hidden />
         <label htmlFor="image">
           <img src={assets.gallery_icon} alt="" />
         </label>
-        <img src={assets.send_button} alt="" />
+        <img onClick={sendMessage} src={assets.send_button} alt="" />
       </div>
+    </div>
+  ) : (
+    <div className='chat-welcome'>
+      <img src={assets.logo_icon} alt="" />
+      <p>Select a room to start chatting</p>
     </div>
   );
 }

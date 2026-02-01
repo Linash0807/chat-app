@@ -131,3 +131,17 @@
     display: block;
 }
 
+.room-btn {
+    background: #077eff;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.room-btn:hover {
+    background: #0056b3;
+}
