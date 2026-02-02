@@ -126,6 +126,7 @@ const ChatBox = () => {
   return chatUser ? (
     <div className="chat-box">
       <div className="chat-user">
+        <img className='arrow' onClick={() => { setMessagesId(null); setChatUser(null); }} src={assets.arrow_icon} alt="Back" />
         <img src={assets.profile_img} alt="" />
         <div className="chat-info">
           <p>{chatUser.name || chatUser.roomId} <img className='dot' src={assets.green_dot} alt="" /></p>

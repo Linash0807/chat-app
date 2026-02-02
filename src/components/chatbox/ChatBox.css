@@ -177,3 +177,28 @@
 .chat-welcome img {
     width: 60px;
 }
+
+.chat-user .arrow {
+    display: none;
+    width: 20px;
+}
+
+@media (max-width: 600px) {
+    .chat-box {
+        height: 100vh;
+    }
+
+    .chat-user .arrow {
+        display: block;
+        margin-right: 5px;
+        cursor: pointer;
+    }
+
+    .chat-msg {
+        height: calc(100% - 120px);
+    }
+
+    .msg {
+        max-width: 160px;
+    }
+}
