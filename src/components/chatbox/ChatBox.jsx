@@ -1,33 +1,50 @@
 import './ChatBox.css';
 import assets from '../../../assets/assets';
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState, useRef } from 'react';
 import { AppContext } from '../../context/AppContext';
 import { db, leaveRoom } from '../../config/firebase';
-import { arrayUnion, doc, onSnapshot, serverTimestamp, updateDoc, collection, addDoc, query, orderBy, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, serverTimestamp, updateDoc, collection, addDoc, query, orderBy, getDoc } from 'firebase/firestore';
 import { toast } from 'react-toastify';
 
 const ChatBox = () => {
   const { userData, messagesId, chatUser, messages, setMessages, setMessagesId, setChatUser } = useContext(AppContext);
   const [input, setInput] = useState("");
   const [participants, setParticipants] = useState([]);
+  const [userMap, setUserMap] = useState({}); // UID to Name mapping
+  const scrollRef = useRef();
 
   const fetchParticipants = async () => {
     if (chatUser && chatUser.participants) {
+      const newUserMap = { ...userMap };
       const names = [];
-      for (const uid of chatUser.participants) {
-        const userRef = doc(db, 'users', uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          names.push(userSnap.data().name);
+
+      await Promise.all(chatUser.participants.map(async (uid) => {
+        if (!newUserMap[uid]) {
+          const userRef = doc(db, 'users', uid);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            newUserMap[uid] = userSnap.data().name;
+          } else {
+            newUserMap[uid] = "Unknown";
+          }
         }
-      }
+        names.push(newUserMap[uid]);
+      }));
+
+      setUserMap(newUserMap);
       setParticipants(names);
     }
   }
 
   useEffect(() => {
     fetchParticipants();
-  }, [chatUser]);
+  }, [chatUser, messages]);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   const handleLeaveRoom = async () => {
     if (window.confirm("Are you sure you want to leave this room?")) {
@@ -48,15 +65,15 @@ const ChatBox = () => {
         const messageData = {
           text: input,
           sId: userData.uid,
+          sName: userData.name,
           createdAt: serverTimestamp()
         }
 
         await addDoc(collection(db, "rooms", messagesId, "messages"), messageData);
 
-        // Update last message in room document
         const roomRef = doc(db, 'rooms', messagesId);
         await updateDoc(roomRef, {
-          lastMessage: input,
+          lastMessage: `${userData.name}: ${input}`,
           updatedAt: Date.now()
         });
 
@@ -100,10 +117,15 @@ const ChatBox = () => {
         <img onClick={handleLeaveRoom} src={assets.help_icon} className='help' title="Leave Room" alt="Leave Room" />
       </div>
 
-      <div className="chat-msg">
+      <div className="chat-msg" ref={scrollRef}>
         {messages.map((msg, index) => (
           <div key={index} className={msg.sId === userData.uid ? "s-msg" : "r-msg"}>
-            <p className="msg">{msg.text}</p>
+            <div className="msg-content">
+              <p className="sender-name">
+                {msg.sId === userData?.uid ? "You" : (msg.sName || userMap[msg.sId] || "Unknown")}
+              </p>
+              <p className="msg">{msg.text}</p>
+            </div>
             <div>
               <img src={assets.profile_img} alt="" />
               <p>{msg.createdAt ? new Date(msg.createdAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}</p>
