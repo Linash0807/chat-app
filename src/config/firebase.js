@@ -61,11 +61,26 @@ const loginAnonymous = async (displayName) => {
 const logout = async () => {
   try {
     await signOut(auth);
+    localStorage.removeItem('activeRoomId');
+    localStorage.removeItem('activeChatUser');
   } catch (error) {
     console.error("Error logging out:", error);
     toast.error(error.code);
   }
 }
+
+const deleteRoom = async (roomId) => {
+  try {
+    const roomRef = doc(db, "rooms", roomId);
+    await deleteDoc(roomRef);
+    toast.success("Room deleted successfully");
+    return true;
+  } catch (error) {
+    console.error("Error deleting room:", error);
+    toast.error("Failed to delete room");
+    return false;
+  }
+};
 
 const createRoom = async (user) => {
   try {

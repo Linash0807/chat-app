@@ -50,7 +50,7 @@ const LeftSideBar = () => {
                         <div className="sub-menu">
                             <p onClick={() => navigate('/profile')}>Edit profile</p>
                             <hr />
-                            <p onClick={() => logout()}>Logout</p>
+                            <p onClick={() => { logout(); navigate('/login'); }}>Logout</p>
                         </div>
                     </div>
                 </div>

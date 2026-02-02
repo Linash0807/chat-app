@@ -45,6 +45,11 @@ const AppContextProvider = (props) => {
                             toast.info("Room has been deleted");
                         }
                     }
+                }, (error) => {
+                    console.error("Rooms snapshot listener error:", error);
+                    if (error.code === 'permission-denied') {
+                        toast.error("Permission denied: Unable to fetch chat rooms.");
+                    }
                 });
             } else {
                 console.warn("User profile not found in Firestore for UID:", uid);

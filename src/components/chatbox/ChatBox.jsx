@@ -46,6 +46,18 @@ const ChatBox = () => {
     }
   }, [messages]);
 
+  const handleDeleteRoom = async () => {
+    if (window.confirm("Are you the creator? This will delete the room for EVERYONE. Proceed?")) {
+      const success = await deleteRoom(messagesId);
+      if (success) {
+        setMessagesId(null);
+        setChatUser(null);
+        localStorage.removeItem('activeRoomId');
+        localStorage.removeItem('activeChatUser');
+      }
+    }
+  }
+
   const handleLeaveRoom = async () => {
     if (window.confirm("Are you sure you want to leave this room?")) {
       const success = await leaveRoom(messagesId, userData);
@@ -94,6 +106,11 @@ const ChatBox = () => {
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
         setMessages(snapshot.docs.map(doc => doc.data()));
+      }, (error) => {
+        console.error("Messages snapshot listener error:", error);
+        if (error.code === 'permission-denied') {
+          toast.error("Permission denied: Unable to load messages.");
+        }
       });
 
       return () => unsubscribe();
@@ -114,7 +131,13 @@ const ChatBox = () => {
           <p>{chatUser.name || chatUser.roomId} <img className='dot' src={assets.green_dot} alt="" /></p>
           <span className="participants">{participants.join(", ")}</span>
         </div>
-        <img onClick={handleLeaveRoom} src={assets.help_icon} className='help' title="Leave Room" alt="Leave Room" />
+        <div className="chat-actions">
+          {chatUser.createdBy === userData?.uid ? (
+            <img onClick={handleDeleteRoom} src={assets.help_icon} className='help' title="Delete Room (Creator)" alt="Delete Room" />
+          ) : (
+            <img onClick={handleLeaveRoom} src={assets.help_icon} className='help' title="Leave Room" alt="Leave Room" />
+          )}
+        </div>
       </div>
 
       <div className="chat-msg" ref={scrollRef}>
