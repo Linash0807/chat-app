@@ -177,4 +177,4 @@ const leaveRoom = async (roomId, user) => {
   }
 };
 
-export { loginAnonymous, logout, createRoom, joinRoom, leaveRoom, auth, db }
+export { loginAnonymous, logout, deleteRoom, createRoom, joinRoom, leaveRoom, auth, db }

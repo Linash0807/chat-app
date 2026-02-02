@@ -8,12 +8,14 @@ export const AppContext = createContext();
 
 const AppContextProvider = (props) => {
     const [userData, setUserData] = useState(null);
+    const [isFetching, setIsFetching] = useState(true);
     const [chatData, setChatData] = useState([]);
     const [messagesId, setMessagesId] = useState(localStorage.getItem('activeRoomId') || null);
     const [messages, setMessages] = useState([]);
     const [chatUser, setChatUser] = useState(JSON.parse(localStorage.getItem('activeChatUser')) || null);
 
     const loadUserData = async (uid) => {
+        setIsFetching(true);
         try {
             const userRef = doc(db, 'users', uid);
             const userSnap = await getDoc(userRef);
@@ -53,18 +55,13 @@ const AppContextProvider = (props) => {
                 });
             } else {
                 console.warn("User profile not found in Firestore for UID:", uid);
-                // If the document doesn't exist, we must clear userData or set it to something 
-                // that tells the app the profile needs to be created, but don't leave it as 'null' 
-                // if that's interpreted as 'still loading'. 
-                // However, App.jsx guards check for !userData, so null is correct for UNLOADED.
-                // We just need to make sure we don't get stuck here.
                 setUserData(null);
-                // The auth observer already handles the case where user object exists but profile doesn't.
-                // If it's a new anonymous user, the login process should have created the doc.
             }
         } catch (error) {
             console.error("Error loading user data:", error);
             setUserData(null);
+        } finally {
+            setIsFetching(false);
         }
     }
 
@@ -79,6 +76,7 @@ const AppContextProvider = (props) => {
                 setChatUser(null);
                 localStorage.removeItem('activeRoomId');
                 localStorage.removeItem('activeChatUser');
+                setIsFetching(false);
             }
         });
         return () => unsubscribe();
@@ -86,6 +84,7 @@ const AppContextProvider = (props) => {
 
     const value = {
         userData, setUserData,
+        isFetching, setIsFetching,
         chatData, setChatData,
         loadUserData,
         messages, setMessages,

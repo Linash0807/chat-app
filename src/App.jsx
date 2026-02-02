@@ -8,17 +8,19 @@ import 'react-toastify/dist/ReactToastify.css';
 import { AppContext } from "./context/AppContext";
 
 const AppRoutes = () => {
-  const { userData } = useContext(AppContext);
+  const { userData, isFetching } = useContext(AppContext);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
+    if (isFetching) return; // Wait for profile fetch to complete
+
     if (!userData && location.pathname !== '/login') {
       navigate('/login');
     } else if (userData && location.pathname === '/login') {
       navigate('/chat');
     }
-  }, [userData, location.pathname, navigate]);
+  }, [userData, isFetching, location.pathname, navigate]);
 
   return (
     <Routes>
