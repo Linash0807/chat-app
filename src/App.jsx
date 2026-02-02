@@ -1,22 +1,42 @@
-import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import React, { useContext, useEffect } from "react";
+import { HashRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import Chat from "./pages/chat/Chat";
 import Login from "./pages/login/Login";
 import ProfileUpdate from "./pages/profileupdate/ProfileUpdate";
-  import { ToastContainer, toast } from 'react-toastify';
+import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { AppContext } from "./context/AppContext";
+
+const AppRoutes = () => {
+  const { userData } = useContext(AppContext);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!userData && location.pathname !== '/login') {
+      navigate('/login');
+    } else if (userData && location.pathname === '/login') {
+      navigate('/chat');
+    }
+  }, [userData, location.pathname, navigate]);
+
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/chat" element={<Chat />} />
+      <Route path="/profile" element={<ProfileUpdate />} />
+      <Route path="*" element={<Login />} />
+    </Routes>
+  );
+}
+
 const App = () => {
   return (
     <>
       <ToastContainer />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/profile" element={<ProfileUpdate />} />
-          <Route path="*" element={<Login />} />
-        </Routes>
-      </BrowserRouter>
+      <HashRouter>
+        <AppRoutes />
+      </HashRouter>
     </>
   );
 }

@@ -17,6 +17,7 @@ const AppContextProvider = (props) => {
         try {
             const userRef = doc(db, 'users', uid);
             const userSnap = await getDoc(userRef);
+
             if (userSnap.exists()) {
                 const data = userSnap.data();
                 setUserData(data);
@@ -29,17 +30,14 @@ const AppContextProvider = (props) => {
 
                 onSnapshot(roomsQuery, (snapshot) => {
                     const rooms = snapshot.docs.map(doc => doc.data());
-                    // Sort by updatedAt if available, otherwise by createdAt
                     setChatData(rooms.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)));
 
-                    // Update current chat partner info if room data changes
                     if (messagesId) {
                         const currentRoom = rooms.find(r => r.roomId === messagesId);
                         if (currentRoom) {
                             setChatUser(currentRoom);
                             localStorage.setItem('activeChatUser', JSON.stringify(currentRoom));
                         } else if (chatUser) {
-                            // Room exists no more (deleted)
                             setMessagesId(null);
                             setChatUser(null);
                             localStorage.removeItem('activeRoomId');
@@ -48,13 +46,20 @@ const AppContextProvider = (props) => {
                         }
                     }
                 });
+            } else {
+                console.warn("User profile not found in Firestore for UID:", uid);
+                // If the document doesn't exist, we must clear userData or set it to something 
+                // that tells the app the profile needs to be created, but don't leave it as 'null' 
+                // if that's interpreted as 'still loading'. 
+                // However, App.jsx guards check for !userData, so null is correct for UNLOADED.
+                // We just need to make sure we don't get stuck here.
+                setUserData(null);
+                // The auth observer already handles the case where user object exists but profile doesn't.
+                // If it's a new anonymous user, the login process should have created the doc.
             }
         } catch (error) {
-            if (error.code === 'permission-denied') {
-                console.error("Firestore permission denied. Check your security rules.");
-            } else {
-                console.error("Error loading user data:", error);
-            }
+            console.error("Error loading user data:", error);
+            setUserData(null);
         }
     }
 
